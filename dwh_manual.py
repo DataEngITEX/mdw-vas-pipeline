@@ -1,7 +1,7 @@
-import sys
+#import sys
 #sys.path.insert(0, "/usr/local/airflow/.local/lib/python3.7/site-packages")
 # Import Library to access databases from MongoDB (Middleware and VAS)
-import pymongo
+#import pymongo
 import urllib.parse
 from pymongo import MongoClient
 # import libraries (to access TAMS)
@@ -20,8 +20,8 @@ import sys
 
 
 
-start = datetime(2023,11,27,8,0,0,0)
-stop = datetime(2023,11,28,7,59,59,999)
+start = datetime(2023,11,29,8,0,0,0)
+stop = datetime(2023,11,30,7,59,59,999)
 
 def extract_from_vas():
     # vas credentials
