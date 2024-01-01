@@ -162,7 +162,7 @@ def extract_from_mdw():
     #        "$lte": stop}})
     #result_df1 =  pd.DataFrame(list(result1))
 
-    result2 = db.journals_23_10_12.find({"transactionTime": {"$gt": start,
+    result2 = db.journals_24_01_03.find({"transactionTime": {"$gt": start,
             "$lte": stop}})
     result_df2 =  pd.DataFrame(list(result2))
     
@@ -185,7 +185,7 @@ def extract_from_mdw():
         old_count = len(df)
         print('Extracting data from middleware from ' + str(start.strftime('%Y-%m-%d %H:%M:%S')) + ' to ' + str(stop.strftime('%Y-%m-%d %H:%M:%S')))
 
-        result2 = db.journals_23_10_12.find({"transactionTime": {"$gt": start,
+        result2 = db.journals_24_01_03.find({"transactionTime": {"$gt": start,
             "$lte": stop}})
         df =  pd.DataFrame(list(result2))
         count_df = len(df)
