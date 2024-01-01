@@ -20,8 +20,8 @@ import sys
 
 
 
-start = datetime(2023,11,29,8,0,0,0)
-stop = datetime(2023,11,30,7,59,59,999)
+start = datetime(2024,1,1,0,0,0,0)
+stop = datetime(2024,1,1,7,59,59,999)
 
 def extract_from_vas():
     # vas credentials
@@ -227,12 +227,12 @@ def load_mdw_to_dwh():
             except:
                   pass 
             try:
-                mdw_df.to_sql('mdw_transactions_2023_july', engine,  schema='galaxy_schema', if_exists='append', index=False,  dtype={col_name: sqlalchemy.types.Text() for col_name in mdw_df})
+                mdw_df.to_sql('mdw_transactions_2024_jan', engine,  schema='galaxy_schema', if_exists='append', index=False,  dtype={col_name: sqlalchemy.types.Text() for col_name in mdw_df})
                 print('mdw transaction loaded  to data warehouse ')
 
                 # alter table to create mdw_id, this will be use to create schema
                 cursor = conn.cursor()
-                cursor.execute("ALTER TABLE galaxy_schema.mdw_transactions_2023_july ADD COLUMN IF NOT EXISTS mdw_id SERIAL PRIMARY KEY;")
+                cursor.execute("ALTER TABLE galaxy_schema.mdw_transactions_2024_jan ADD COLUMN IF NOT EXISTS mdw_id SERIAL PRIMARY KEY;")
                 # Commit your changes in the database
                 conn.commit()
                 conn.close()
@@ -240,7 +240,7 @@ def load_mdw_to_dwh():
                 engine = create_engine('postgresql://itex_user:ITEX2022@192.168.0.242:5432/data_warehouse')
                 print("Direct loading failed due to extra column, creating additional column")
                 sql2 = "SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS \
-                    WHERE table_name = 'mdw_transactions_2023_july'"
+                    WHERE table_name = 'mdw_transactions_2024_jan'"
                 
                 tb_df2 = pd.read_sql(sql2, con=engine)
                 tb_ls2 = tb_df2['column_name'].values.tolist()
@@ -254,7 +254,7 @@ def load_mdw_to_dwh():
                 cursor = conn.cursor()
                 print('creating columns in table') 
                 for l in col_dif2:
-                    cursor.execute('ALTER TABLE galaxy_schema.%s ADD COLUMN IF NOT EXISTS %s text' % ('mdw_transactions_2023_july', str(l)))        
+                    cursor.execute('ALTER TABLE galaxy_schema.%s ADD COLUMN IF NOT EXISTS %s text' % ('mdw_transactions_2024_jan', str(l)))        
                     # Commit your changes in the database
                     conn.commit()
                 
@@ -263,11 +263,11 @@ def load_mdw_to_dwh():
                     del mdw_df['Unnamed: 0']
                 except:
                     pass 
-                mdw_df.to_sql('mdw_transactions_2023_july', engine,  schema='galaxy_schema', if_exists='append', index=False, dtype={col_name: sqlalchemy.types.Text() for col_name in mdw_df})
+                mdw_df.to_sql('mdw_transactions_2024_jan', engine,  schema='galaxy_schema', if_exists='append', index=False, dtype={col_name: sqlalchemy.types.Text() for col_name in mdw_df})
 
                 # alter table to create mdw_id, this will be use to create schema
                 cursor = conn.cursor()
-                cursor.execute("ALTER TABLE galaxy_schema.mdw_transactions_2023_july ADD COLUMN IF NOT EXISTS mdw_id SERIAL PRIMARY KEY;")
+                cursor.execute("ALTER TABLE galaxy_schema.mdw_transactions_2024_jan ADD COLUMN IF NOT EXISTS mdw_id SERIAL PRIMARY KEY;")
                 # Commit your changes in the database
                 print('loading to data warehouse completed')
                 conn.commit()
