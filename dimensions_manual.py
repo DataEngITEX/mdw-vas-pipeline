@@ -93,8 +93,8 @@ def profile_dim():
     conn.close()
 
     # loading all profile data to warehouse crash airflow, split data and load in chunks
-    for start in range(0, len(tams_nqr_ptsp_merchant_df), 4000):
-        small_df = tams_nqr_ptsp_merchant_df[start:start+4000]
+    for start in range(0, len(tams_nqr_ptsp_merchant_df), 10000):
+        small_df = tams_nqr_ptsp_merchant_df[start:start+10000]
         cols = list(tams_nqr_ptsp_merchant_df.columns.values)
         small_df = pd.DataFrame(small_df, columns=cols )
         print('changing column types to strings...')
