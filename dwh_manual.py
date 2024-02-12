@@ -1,7 +1,5 @@
-#import sys
 #sys.path.insert(0, "/usr/local/airflow/.local/lib/python3.7/site-packages")
 # Import Library to access databases from MongoDB (Middleware and VAS)
-#import pymongo
 import urllib.parse
 from pymongo import MongoClient
 # import libraries (to access TAMS)
@@ -10,7 +8,9 @@ import sqlalchemy
 from sqlalchemy import create_engine
 # import pandas for data transaformation
 import pandas as pd
+from pandas import json_normalize
 # import utility libraries
+import json
 import numpy as np
 import datetime
 import os
@@ -20,8 +20,8 @@ import sys
 
 
 
-start = datetime(2024,1,3,8,0,0,0)
-stop = datetime(2024,1,4,7,59,59,999)
+start = datetime(2024,2,12,8,0,0,0)
+stop = datetime(2024,2,12,9,59,59,999)
 
 def extract_from_vas():
     # vas credentials
@@ -65,12 +65,12 @@ def extract_from_vas():
     df.columns = map(str.lower, df.columns)
     print('The number of row is ' + str(len(df)))
 
-    if not os.path.exists('C:/daniel/dataruns'):
-        os.makedirs('C:/daniel/dataruns')
-        df.to_csv('C:/daniel/dataruns/' + 'new.csv')
+    if not os.path.exists('C:/daniel/Active projects/mdw_vas/vas_data'):
+        os.makedirs('C:/daniel/Active projects/mdw_vas/vas_data')
+        df.to_csv('C:/daniel/Active projects/mdw_vas/vas_data/' + 'new.csv')
         print('Extraction done ' + str(start.strftime('%Y-%m-%d %H:%M:%S')))
     else:
-        df.to_csv('C:/daniel/dataruns/' + 'new.csv')
+        df.to_csv('C:/daniel/Active projects/mdw_vas/vas_data/' + 'new.csv')
         print('Extraction done ' + str(start.strftime('%Y-%m-%d %H:%M:%S')))
 
 
@@ -78,11 +78,11 @@ def load_vas_to_dwh():
     conn = psy.connect(dbname='data_warehouse', user='itex_user', password='ITEX2022', host='192.168.0.242', port='5432')
     engine = create_engine('postgresql://itex_user:ITEX2022@192.168.0.242:5432/data_warehouse')
     conn.autocommit = True
-    folder = os.listdir('C:/daniel/dataruns/')
+    folder = os.listdir('C:/daniel/Active projects/mdw_vas/vas_data/')
     for i in folder:
         if len(folder) > 0:
             print('folder contains a file')
-            vas_df = pd.read_csv('C:/daniel/dataruns/' + str(i)) 
+            vas_df = pd.read_csv('C:/daniel/Active projects/mdw_vas/vas_data/' + str(i)) 
             #vas_df.reset_index(drop=True)
             print('The number of rows in data is ' + str(len(vas_df)))
             print('loading vas transactions to warehouse...')
@@ -200,12 +200,12 @@ def extract_from_mdw():
     df['mdw_source'] = 'yes'
 
 
-    if not os.path.exists('C:/daniel/mdwruns'):
-        os.makedirs('C:/daniel/mdwruns')
-        df.to_csv('C:/daniel/mdwruns/' + str(start.strftime('%Y-%m-%d %H:%M:%S')) + '.csv')
+    if not os.path.exists('C:/daniel/Active projects/mdw_vas/mdw_data'):
+        os.makedirs('C:/daniel/Active projects/mdw_vas/mdw_data')
+        df.to_csv('C:/daniel/Active projects/mdw_vas/mdw_data/' + str(start.strftime('%Y-%m-%d %H:%M:%S')) + '.csv')
         print('Extraction done ' + str(start.strftime('%Y-%m-%d %H:%M:%S')))
     else:
-        df.to_csv('C:/daniel/mdwruns/' + 'mdw.csv')
+        df.to_csv('C:/daniel/Active projects/mdw_vas/mdw_data/' + 'mdw.csv')
         print('Extraction done ' + str(start.strftime('%Y-%m-%d %H:%M:%S')))
 
 
@@ -213,11 +213,11 @@ def load_mdw_to_dwh():
     conn = psy.connect(dbname='data_warehouse', user='itex_user', password='ITEX2022', host='192.168.0.242', port='5432')
     engine = create_engine('postgresql://itex_user:ITEX2022@192.168.0.242:5432/data_warehouse')
     conn.autocommit = True
-    folder = os.listdir('C:/daniel/mdwruns/')
+    folder = os.listdir('C:/daniel/Active projects/mdw_vas/mdw_data/')
     for i in folder:
         if len(folder) > 0:
             print('folder contains a file')
-            mdw_df = pd.read_csv('C:/daniel/mdwruns/' + str(i))
+            mdw_df = pd.read_csv('C:/daniel/Active projects/mdw_vas/mdw_data/' + str(i))
             mdw_df.reset_index(drop=True)
             #mdw_df = mdw_df.drop('Unnamed: 0')
             print('The number of rows in data is ' + str(len(mdw_df)))
@@ -275,6 +275,103 @@ def load_mdw_to_dwh():
         else:
             print('folder is empty')
 
+
+def get_vas_response():
+    # vas credentials
+    host = "192.168.0.35"
+    port = 11001
+    user_name = "vasuser"
+    pass_word = "p@$$w0rd@1"
+    db_name = "vas"
+    client = MongoClient(f'mongodb://{user_name}:{urllib.parse.quote_plus(pass_word)}@{host}:{port}/{db_name}', compressors="snappy")
+    db = client['vas']
+
+    result = db.vas_transaction.find(
+    {
+        "updated_at": {
+            "$gt": start,
+            "$lte": stop
+        }
+    },
+    {
+        "_id": 0, 
+        "response": 1 
+    }
+    )
+    print('Extracting...')
+    # Convert MongoDB cursor to a list of dictionaries
+    result_list = list(result)
+
+    # Convert the list to a DataFrame
+    result_df = pd.DataFrame(result_list)
+    print('The response length is ' + str(len(result_df)))
+
+    # Function to safely load JSON with error handling
+    def safe_json_loads(x):
+        try:
+            return json.loads(x) if isinstance(x, str) else {}
+        except json.JSONDecodeError:
+            # Log or handle the error as needed
+            return {}
+
+    print("Transforming data")
+    # Replace single quotes with double quotes in the 'response' column
+    result_df['response'] = result_df['response'].str.replace("'", '"')
+
+    # Replace hyphens in column names with underscores
+    result_df.columns = result_df.columns.str.replace('-', '_')
+
+    # Extract keys from the 'response' column using the safe_json_loads function
+    response_keys = result_df['response'].apply(safe_json_loads).apply(pd.Series).columns
+
+    # Expand the 'response' column into separate columns
+    result_df = pd.concat([result_df, result_df['response'].apply(safe_json_loads).apply(pd.Series)], axis=1)
+
+    # Drop the original 'response' column
+    result_df = result_df.drop('response', axis=1)
+
+    # Save the DataFrame to a CSV file
+    result_df.to_csv('C:/daniel/Active projects/mdw_vas/response.csv', index=False)
+    print('Processed data downloaded')
+
+        
+def load_responses_to_dwh():
+    try:
+        conn = psy.connect(dbname='data_warehouse', user='itex_user', password='ITEX2022', host='192.168.0.242', port='5432')
+        conn.autocommit = True
+        engine = create_engine('postgresql://itex_user:ITEX2022@192.168.0.242:5432/data_warehouse')
+
+        print('Connected to DWH, loading processed data')
+        response_df = pd.read_csv('C:/daniel/Active projects/mdw_vas/response.csv')
+        print('Data Loaded')
+        try:
+            response_df.to_sql('vas_responses', engine, schema='galaxy_schema', if_exists='append', index=False, dtype={col_name: sqlalchemy.types.Text() for col_name in response_df})
+        except Exception as exc:
+            print(f'Initial load failed: {exc}')
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = 'vas_responses'")
+                tb_columns = [row[0] for row in cursor.fetchall()]
+
+            extra_columns = set(response_df.columns) - set(tb_columns)
+            print('Extra columns found:', extra_columns)
+
+            if extra_columns:
+                with conn.cursor() as cursor:
+                    for column in extra_columns:
+                        cursor.execute('ALTER TABLE galaxy_schema.vas_responses ADD COLUMN IF NOT EXISTS "%s" text' % column)
+                        print(f'Created missing column: {column}')
+
+            print('Loading Vas responses to data warehouse')
+            response_df.to_sql('vas_responses', engine, schema='galaxy_schema', if_exists='append', index=False, dtype={col_name: sqlalchemy.types.Text() for col_name in response_df})
+            print('Vas responses loaded to data warehouse')
+
+    except Exception as e:
+        print("An error occurred:", str(e))
+    finally:
+        if conn is not None:
+            conn.close()
+
+
 def extract_load_agentdata():
 
     engine_source = create_engine('postgresql://admin:tams@192.168.0.134:5432/tams')
@@ -326,7 +423,7 @@ def extract_load_users():
 
 
 def clean_directory():
-    file_path = 'C:/daniel/mdwruns/mdw.csv'  # Replace with the actual file path
+    file_path = 'C:/daniel/Active projects/mdw_vas/mdw_data/mdw.csv'  # Replace with the actual file path
 
     try:
         os.remove(file_path)
@@ -339,7 +436,7 @@ def clean_directory():
         print(f"An error occurred while deleting the file: {e}")
 
 
-    file_path2 = 'C:/daniel/dataruns/new.csv'  # Replace with the actual file path
+    file_path2 = 'C:/daniel/Active projects/mdw_vas/vas_data/new.csv'  # Replace with the actual file path
 
     try:
         os.remove(file_path2)
@@ -352,12 +449,31 @@ def clean_directory():
         print(f"An error occurred while deleting the file: {e}")
 
 
-extract_from_vas()
-load_vas_to_dwh()
-extract_from_mdw()
-load_mdw_to_dwh()
-extract_load_agentdata()
-extract_load_users()
-clean_directory()
+    file_path3 = 'C:/daniel/Active projects/mdw_vas/response.csv'  # Replace with the actual file path
+
+    try:
+        os.remove(file_path3)
+        print(f"File '{file_path3}' deleted successfully.")
+    except FileNotFoundError:
+        print(f"File '{file_path3}' not found.")
+    except PermissionError:
+        print(f"Permission denied. Unable to delete file '{file_path3}'.")
+    except Exception as e:
+        print(f"An error occurred while deleting the file: {e}")
+
+
+def main():
+    extract_from_vas()
+    load_vas_to_dwh()
+    extract_from_mdw()
+    load_mdw_to_dwh()
+    get_vas_response()
+    load_responses_to_dwh()
+    extract_load_agentdata()
+    extract_load_users()
+    clean_directory()
+
+if __name__ == '__main__':
+    main()
 
 print('DWH Pipeline run success')
