@@ -154,6 +154,12 @@ def location_dim():
         small_df.to_sql('location_dim', con=engine_dwh, schema='galaxy_schema', if_exists='append', index=False, dtype={col_name: sqlalchemy.types.VARCHAR for col_name in location_df})
     print('Location dim loaded  to data warehouse')
 
-extract_from_tams()
-profile_dim()
-location_dim()
+
+
+def main():
+    extract_from_tams()
+    profile_dim()
+    location_dim()
+
+if __name__ == '__main__':
+    main()
