@@ -20,8 +20,8 @@ import sys
 
 
 
-start = datetime(2024,1,3,8,0,0,0)
-stop = datetime(2024,1,4,7,59,59,999)
+start = datetime(2024,1,8,8,0,0,0)
+stop = datetime(2024,1,9,7,59,59,999)
 
 def extract_from_vas():
     # vas credentials
